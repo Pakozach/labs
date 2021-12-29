@@ -842,6 +842,7 @@ int crack_f(FILE *f_in, t_password psw, int *count, int is_show){
     int enc_type;
     t_nonce nonce;
     byte *iv = NULL;
+    byte *iv_tmp = NULL;
     int block_size;
     if (read_enc_file(f_in, &hash_type, &enc_type, nonce, &iv, &block_size, buf_in)){
         if (is_show){
@@ -851,13 +852,15 @@ int crack_f(FILE *f_in, t_password psw, int *count, int is_show){
             print_buf("IV: ", iv, block_size);
             print_buf("CT: ", buf_in->data, buf_in->len);
         }
+        iv_tmp = calloc(block_size, 1);
         t_password psw0={0};
         psw_copy(psw, psw0);
         clock_t time_start = clock();
         do {
             byte *k = get_key_hmac(hash_type, psw, nonce, block_size);
             if (!(k==NULL)) {
-                if (decode_buf(buf_in, buf_out, enc_type, k, iv)) {
+                memcpy(iv_tmp, iv, block_size);
+                if (decode_buf(buf_in, buf_out, enc_type, k, iv_tmp)) {
                     res = buf_have_zero8(buf_out);
                     if (res){
                         free(k);
@@ -885,6 +888,8 @@ int crack_f(FILE *f_in, t_password psw, int *count, int is_show){
         printf("File incorrect\n");
     if (iv)
         free(iv);
+    if (iv_tmp)
+        free(iv_tmp);
     buffer_free(&buf_out);
     buffer_free(&buf_in);
     return res;
